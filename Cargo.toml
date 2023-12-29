@@ -1,0 +1,20 @@
+[package]
+name = "strongs_dict_hebrew"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+unicode-segmentation = "1.10.1"
+either = "1.9.0"
+#strum = "0.25.0"
+#strum_macros = "0.25.0"
+
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+#serde_json = "1.0.108"
+
+
+#  A lightweight rust library for removing hebrew diacritics
+niqqud = "0.1.0"

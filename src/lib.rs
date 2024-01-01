@@ -13,45 +13,33 @@
 )]
 pub mod types;
 pub mod entry;
+pub mod parse;
 
-use std::fs;
+use std::{fs, sync::Mutex, collections::HashMap};
 
-pub use types::*;
-pub use entry::Entry;
+use once_cell::sync::Lazy;
 
-// Main entry point using a slightly higher-level Entry datatype
-pub fn strongs_hebrew_vec() -> Vec<Entry> {
-    parse_strongs_hebrew()
-        .iter()
-        .map(|(k,v)| {
-            Entry::new(k.clone(), v.clone())
-        })
-        .collect()
+pub use crate::types::*;
+pub use crate::entry::Entry;
+
+
+// Top level access point for pre-parsed and higher level type entries
+// This uses statically embedded JSON Data and statically embedded
+// parsed types. A clone of the dictionary is provided to avoid
+// having to lock and unwrap. If you don't want clone then use 
+// `STRONGS_HEB_DICT_VEC` directly.
+pub fn strongs_heb_dict_vec() -> Vec<Entry> {
+    STRONGS_HEB_DICT_VEC.lock().unwrap().to_vec()
 }
 
-// Deserializes json string into a raw entry data type
-// This raw type is meant to be as close to the actual data in
-// the json as possible.
-pub fn parse_strongs_hebrew() -> StrongsRawMap {
-    let data = strongs_hebrew_string();
+// Top level access point if you don't want to clone
+pub static STRONGS_HEB_DICT_VEC: Lazy<Mutex<Vec<Entry>>> 
+= Lazy::new(|| { 
+    let m = crate::parse::parsed_strongs_hebrew_vec(); 
+    Mutex::new(m)
+});
 
-    use serde_json::from_str;
-    let deserialized: StrongsRawMap = from_str(&data).unwrap();
-    deserialized
-}
-
-// Reads json from file into a string
-pub fn strongs_hebrew_string() -> String {
-    let root = std::env::current_dir().unwrap().display().to_string();
-    let file_path = format!("{}/strongs-hebrew-dictionary.json", root);
-
-    let data = fs::read_to_string(file_path)
-        .expect("Should have been able to read the file");
-
-    data
-}
-
-
+// TODO: Provide easier way to access Raw type if user wants it
 
 
 #[cfg(test)]
@@ -60,7 +48,7 @@ mod tests {
 
     #[test]
     fn test_filter_strongs_hebrew_vec_by_key() {
-        let filtered: Vec<_> = strongs_hebrew_vec()
+        let filtered: Vec<_> = strongs_heb_dict_vec()
             .into_iter()
             .filter(|e| { e.key == "H8280"})
             .collect();
@@ -73,7 +61,7 @@ mod tests {
 
     #[test]
     fn test_filter_strongs_hebrew_vec_by_lemma_without_dots() {
-        let filtered: Vec<_> = strongs_hebrew_vec()
+        let filtered: Vec<_> = strongs_heb_dict_vec()
             .into_iter()
             .filter(|e| { e.dotless() == "הרש" })
             .collect();
@@ -82,20 +70,11 @@ mod tests {
 
     #[test]
     fn test_filter_strongs_hebrew_vec_by_lemma_with_dots() {
-        let filtered: Vec<_> = strongs_hebrew_vec()
+        let filtered: Vec<_> = strongs_heb_dict_vec()
             .into_iter()
             .filter(|e| { e.lemma() == "הרָשָׂ" })
             .collect();
         assert_eq!(3, filtered.len())
-    }
-
-    #[test]
-    fn test_parse_strongs_hebrew_lookup() {
-        let key = "H8280";
-        let strongs = parse_strongs_hebrew();
-        let s = strongs.get(key).unwrap();
-        let strongs_def = &s.strongs_def;
-        assert_eq!(strongs_def, "to prevail");
     }
 }
 
